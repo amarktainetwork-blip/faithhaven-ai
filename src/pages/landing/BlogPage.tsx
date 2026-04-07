@@ -4,6 +4,7 @@ import { BookOpen, Calendar, User, Tag, Search, ArrowRight } from 'lucide-react'
 import { useBlogStore } from '@/store';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { toast } from 'sonner';
 
 const categories = ['All', 'Faith', 'Prayer', 'Family', 'Technology', 'Community'];
 
@@ -11,6 +12,13 @@ export default function BlogPage() {
   const { posts } = useBlogStore();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success('Thanks! Please check your inbox to confirm your subscription.');
+    setNewsletterEmail('');
+  };
 
   const filteredPosts = posts.filter(post => {
     const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
@@ -147,10 +155,13 @@ export default function BlogPage() {
             <p className="text-slate-700 mb-6">
               Get the latest articles and resources delivered to your inbox weekly.
             </p>
-            <form className="flex flex-col sm:flex-row gap-3">
+            <form className="flex flex-col sm:flex-row gap-3" onSubmit={handleNewsletterSubmit}>
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                required
                 className="flex-1 h-12 px-4 rounded-xl border-0 focus:ring-2 focus:ring-[hsl(210,70%,60%)] outline-none"
               />
               <button

@@ -108,6 +108,7 @@ export interface WorshipSong {
   title: string;
   artist: string;
   category: string;
+  duration?: string;
   lyrics?: string;
   chords?: string;
 }
@@ -121,14 +122,9 @@ export interface GeoIPData {
 }
 
 export interface APIConfig {
-  openaiApiKey: string;
-  elevenLabsApiKey: string;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  payfastMerchantId: string;
-  payfastMerchantKey: string;
-  stripePublishableKey: string;
-  stripeSecretKey: string;
+  provider: "payfast" | "stripe";
+  environment: "sandbox" | "live";
+  callbackUrl: string;
 }
 
 export interface PricingTier {

@@ -9,6 +9,7 @@ const devotionals = [
     theme: 'Love',
     duration: '15 min',
     ages: 'All ages',
+    reading: 'A new command I give you: Love one another. As I have loved you, so you must love one another.',
   },
   {
     id: 2,
@@ -17,6 +18,7 @@ const devotionals = [
     theme: 'Trust',
     duration: '10 min',
     ages: 'All ages',
+    reading: 'Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him.',
   },
   {
     id: 3,
@@ -25,6 +27,7 @@ const devotionals = [
     theme: 'Kindness',
     duration: '12 min',
     ages: 'All ages',
+    reading: 'Be kind and compassionate to one another, forgiving each other, just as in Christ God forgave you.',
   },
 ];
 
@@ -91,9 +94,7 @@ export default function FamilyDevotionals() {
                   Scripture Reading
                 </h3>
                 <p className="text-slate-600 leading-relaxed">
-                  "A new command I give you: Love one another. As I have loved you, 
-                  so you must love one another. By this everyone will know that you 
-                  are my disciples, if you love one another."
+                  {selectedDevotional.reading}
                 </p>
               </div>
 

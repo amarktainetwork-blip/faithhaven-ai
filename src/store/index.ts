@@ -18,6 +18,7 @@ import type {
   PressRelease,
   FAQItem
 } from '@/types';
+import { apiRequest } from '@/lib/api';
 
 // Auth Store
 interface AuthState {
@@ -28,7 +29,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string, denomination: Denomination) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  updateProfile: (updates: Partial<User>) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -38,51 +40,85 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       setUser: (user) => set({ user, isAuthenticated: !!user }),
-      login: async (email, _password) => {
+      login: async (email, password) => {
         set({ isLoading: true });
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockUser: User = {
-          id: '1',
-          email,
-          name: 'Faith Traveler',
-          denomination: 'nondenominational',
-          language: 'en',
-          role: email.includes('admin') ? 'admin' : 'user',
-          subscriptionPlan: 'individual',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        
-        set({ user: mockUser, isAuthenticated: true, isLoading: false });
-        return true;
+        try {
+          const data = await apiRequest<{ token: string; user: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string } }>('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          });
+          localStorage.setItem('faithhaven-token', data.token);
+          set({
+            user: {
+              ...data.user,
+              createdAt: new Date(data.user.createdAt),
+              updatedAt: new Date(data.user.updatedAt),
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        } catch {
+          set({ isLoading: false });
+          return false;
+        }
       },
-      register: async (email, _password, name, denomination) => {
+      register: async (email, password, name, denomination) => {
         set({ isLoading: true });
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockUser: User = {
-          id: '1',
-          email,
-          name,
-          denomination,
-          language: 'en',
-          role: 'user',
-          subscriptionPlan: 'free',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        
-        set({ user: mockUser, isAuthenticated: true, isLoading: false });
-        return true;
+        try {
+          const data = await apiRequest<{ token: string; user: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string } }>('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ email, password, name, denomination }),
+          });
+          localStorage.setItem('faithhaven-token', data.token);
+          set({
+            user: {
+              ...data.user,
+              createdAt: new Date(data.user.createdAt),
+              updatedAt: new Date(data.user.updatedAt),
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        } catch {
+          set({ isLoading: false });
+          return false;
+        }
       },
       logout: () => {
+        localStorage.removeItem('faithhaven-token');
         set({ user: null, isAuthenticated: false });
       },
-      updateProfile: (updates) => {
+      updateProfile: async (updates) => {
         const { user } = get();
-        if (user) {
-          set({ user: { ...user, ...updates, updatedAt: new Date() } });
+        if (!user) return false;
+        try {
+          const data = await apiRequest<{ user: Omit<User, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string } }>('/api/user/profile', {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+          });
+          set({
+            user: {
+              ...data.user,
+              createdAt: new Date(data.user.createdAt),
+              updatedAt: new Date(data.user.updatedAt),
+            },
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      changePassword: async (currentPassword, newPassword) => {
+        try {
+          await apiRequest<{ ok: true }>('/api/user/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword, newPassword }),
+          });
+          return true;
+        } catch {
+          return false;
         }
       },
     }),
@@ -98,7 +134,6 @@ interface ChatState {
   isTyping: boolean;
   showAdminPrompt: boolean;
   adminUnlocked: boolean;
-  adminPassword: string;
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   clearChat: () => void;
   setIsTyping: (isTyping: boolean) => void;
@@ -109,7 +144,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       messages: [
         {
           id: 'welcome',
@@ -121,7 +156,6 @@ export const useChatStore = create<ChatState>()(
       isTyping: false,
       showAdminPrompt: false,
       adminUnlocked: false,
-      adminPassword: 'FaithHavenAdmin2026!', 
       addMessage: (message) => {
         const newMessage: ChatMessage = {
           ...message,
@@ -140,11 +174,7 @@ export const useChatStore = create<ChatState>()(
       }),
       setIsTyping: (isTyping) => set({ isTyping }),
       setShowAdminPrompt: (show) => set({ showAdminPrompt: show }),
-      unlockAdmin: (password) => {
-        if (password === get().adminPassword) {
-          set({ adminUnlocked: true, showAdminPrompt: false });
-          return true;
-        }
+      unlockAdmin: () => {
         return false;
       },
       lockAdmin: () => set({ adminUnlocked: false }),
@@ -282,7 +312,7 @@ export const usePricingStore = create<PricingState>()((set, get) => ({
         },
         isLoading: false,
       });
-    } catch (error) {
+    } catch {
       set({
         geoData: {
           country: 'South Africa',
@@ -320,7 +350,7 @@ interface AdminState {
     prayers: number;
     devotionals: number;
   };
-  subscribers: any[];
+  subscribers: Array<{ id: string; name: string; email: string; status: 'active' | 'inactive'; plan: string }>;
   apiConfig: APIConfig;
   isLoading: boolean;
   fetchStats: () => Promise<void>;
@@ -328,9 +358,7 @@ interface AdminState {
   updateAPIConfig: (config: Partial<APIConfig>) => void;
 }
 
-export const useAdminStore = create<AdminState>()(
-  persist(
-    (set) => ({
+export const useAdminStore = create<AdminState>()((set) => ({
       stats: {
         totalUsers: 1240,
         activeSubscribers: 850,
@@ -343,34 +371,33 @@ export const useAdminStore = create<AdminState>()(
       },
       subscribers: [],
       apiConfig: {
-        openaiApiKey: '',
-        elevenLabsApiKey: '',
-        supabaseUrl: '',
-        supabaseAnonKey: '',
-        payfastMerchantId: '',
-        payfastMerchantKey: '',
-        stripePublishableKey: '',
-        stripeSecretKey: '',
+        provider: 'payfast',
+        environment: 'sandbox',
+        callbackUrl: '',
       },
       isLoading: false,
       fetchStats: async () => {
         set({ isLoading: true });
-        await new Promise(resolve => setTimeout(resolve, 500));
-        set({ isLoading: false });
+        try {
+          const data = await apiRequest<{ stats: AdminState['stats'] }>('/api/admin/stats');
+          set({ stats: data.stats, isLoading: false });
+        } catch {
+          set({ isLoading: false });
+        }
       },
       fetchSubscribers: async () => {
         set({ isLoading: true });
-        await new Promise(resolve => setTimeout(resolve, 500));
-        set({ isLoading: false });
+        try {
+          const data = await apiRequest<{ subscribers: AdminState['subscribers'] }>('/api/admin/subscribers');
+          set({ subscribers: data.subscribers, isLoading: false });
+        } catch {
+          set({ isLoading: false });
+        }
       },
       updateAPIConfig: (config) => set((state) => ({
         apiConfig: { ...state.apiConfig, ...config }
       })),
-    }),
-    {
-      name: 'admin-storage',
-    }
-  )
+    })
 );
 
 // Blog Store
@@ -389,7 +416,7 @@ export const useBlogStore = create<BlogState>()((set) => ({
       content: 'Full content here...',
       author: 'FaithHaven Team',
       date: new Date(),
-      category: 'Spiritual Growth',
+      category: 'Faith',
       tags: ['Prayer', 'Technology'],
     }
   ],
@@ -483,39 +510,50 @@ interface PrayerWallState {
   prayers: PrayerWallItem[];
   isLoading: boolean;
   fetchWallItems: () => Promise<void>;
-  addPrayer: (prayer: Omit<PrayerWallItem, 'id' | 'prayerCount' | 'createdAt'>) => void;
-  prayFor: (id: string) => void;
+  addPrayer: (prayer: Omit<PrayerWallItem, 'id' | 'prayerCount' | 'createdAt'>) => Promise<void>;
+  prayFor: (id: string) => Promise<void>;
 }
 
 export const usePrayerWallStore = create<PrayerWallState>()((set) => ({
-  prayers: [
-    {
-      id: '1',
-      userId: '1',
-      userName: 'Faith Traveler',
-      content: 'Praying for all our users today.',
-      prayerCount: 5,
-      isAnonymous: false,
-      createdAt: new Date(),
-    }
-  ],
+  prayers: [],
   isLoading: false,
   fetchWallItems: async () => {
     set({ isLoading: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    set({ isLoading: false });
+    try {
+      const data = await apiRequest<{ prayers: Array<Omit<PrayerWallItem, 'createdAt'> & { createdAt: string }> }>('/api/content/prayer-wall');
+      set({
+        prayers: data.prayers.map((p) => ({ ...p, createdAt: new Date(p.createdAt) })),
+        isLoading: false,
+      });
+    } catch {
+      set({ isLoading: false });
+    }
   },
-  addPrayer: (prayer) => set((state) => ({
-    prayers: [{
-      ...prayer,
-      id: Date.now().toString(),
-      prayerCount: 0,
-      createdAt: new Date()
-    }, ...state.prayers]
-  })),
-  prayFor: (id) => set((state) => ({
-    prayers: state.prayers.map(p => p.id === id ? { ...p, prayerCount: p.prayerCount + 1 } : p)
-  }))
+  addPrayer: async (prayer) => {
+    try {
+      const data = await apiRequest<{ prayer: Omit<PrayerWallItem, 'createdAt'> & { createdAt: string } }>('/api/content/prayer-wall', {
+        method: 'POST',
+        body: JSON.stringify({ content: prayer.content, isAnonymous: prayer.isAnonymous }),
+      });
+      set((state) => ({
+        prayers: [{ ...data.prayer, createdAt: new Date(data.prayer.createdAt) }, ...state.prayers],
+      }));
+    } catch {
+      // noop
+    }
+  },
+  prayFor: async (id) => {
+    try {
+      const data = await apiRequest<{ prayer: Omit<PrayerWallItem, 'createdAt'> & { createdAt: string } }>(`/api/content/prayer-wall/${id}/pray`, {
+        method: 'POST',
+      });
+      set((state) => ({
+        prayers: state.prayers.map((p) => (p.id === id ? { ...data.prayer, createdAt: new Date(data.prayer.createdAt) } : p)),
+      }));
+    } catch {
+      // noop
+    }
+  }
 }));
 
 // Calendar Store
@@ -523,28 +561,37 @@ interface CalendarState {
   events: CalendarEvent[];
   isLoading: boolean;
   fetchEvents: () => Promise<void>;
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
 }
 
 export const useCalendarStore = create<CalendarState>()((set) => ({
-  events: [
-    {
-      id: '1',
-      title: 'Easter Sunday',
-      date: new Date('2026-04-05'),
-      type: 'feast',
-      description: 'Celebrating the resurrection of Jesus Christ.',
-    }
-  ],
+  events: [],
   isLoading: false,
   fetchEvents: async () => {
     set({ isLoading: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    set({ isLoading: false });
+    try {
+      const data = await apiRequest<{ events: Array<Omit<CalendarEvent, 'date'> & { date: string }> }>('/api/content/calendar');
+      set({
+        events: data.events.map((e) => ({ ...e, date: new Date(e.date) })),
+        isLoading: false,
+      });
+    } catch {
+      set({ isLoading: false });
+    }
   },
-  addEvent: (event) => set((state) => ({
-    events: [...state.events, { ...event, id: Date.now().toString() }]
-  })),
+  addEvent: async (event) => {
+    try {
+      const data = await apiRequest<{ event: Omit<CalendarEvent, 'date'> & { date: string } }>('/api/content/calendar', {
+        method: 'POST',
+        body: JSON.stringify({ ...event, date: event.date.toISOString() }),
+      });
+      set((state) => ({
+        events: [...state.events, { ...data.event, date: new Date(data.event.date) }],
+      }));
+    } catch {
+      // noop
+    }
+  },
 }));
 
 // Devotional Store
@@ -556,32 +603,30 @@ interface DevotionalState {
 }
 
 export const useDevotionalStore = create<DevotionalState>()((set, get) => ({
-  devotionals: [
-    {
-      id: '1',
-      title: 'Walking in Faith',
-      verse: 'Hebrews 11:1',
-      scripture: 'Now faith is confidence in what we hope for and assurance about what we do not see.',
-      reflection: 'Faith is the foundation of our spiritual life.',
-      prayer: 'Lord, strengthen my faith today.',
-      date: new Date(),
-    }
-  ],
+  devotionals: [],
   isLoading: false,
   fetchDevotionals: async () => {
     set({ isLoading: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    set({ isLoading: false });
+    try {
+      const data = await apiRequest<{ devotionals: Array<Omit<Devotional, 'date'> & { date: string }> }>('/api/content/devotionals');
+      set({
+        devotionals: data.devotionals.map((d) => ({ ...d, date: new Date(d.date) })),
+        isLoading: false,
+      });
+    } catch {
+      set({ isLoading: false });
+    }
   },
   getTodaysDevotional: () => {
     const { devotionals } = get();
-    return devotionals[0]; // Simple mock for now
+    return devotionals[0];
   },
 }));
 
 // Worship Store
 interface WorshipState {
   songs: WorshipSong[];
+  playlists: Array<{ id: string; name: string; songs: number; color: string }>;
   isLoading: boolean;
   fetchSongs: () => Promise<void>;
 }
@@ -593,12 +638,18 @@ export const useWorshipStore = create<WorshipState>()((set) => ({
       title: 'Amazing Grace',
       artist: 'Traditional',
       category: 'Hymn',
+      duration: '3:45',
     }
   ],
+  playlists: [],
   isLoading: false,
   fetchSongs: async () => {
     set({ isLoading: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    set({ isLoading: false });
+    try {
+      const data = await apiRequest<{ songs: WorshipSong[]; playlists: WorshipState['playlists'] }>('/api/content/worship');
+      set({ songs: data.songs, playlists: data.playlists, isLoading: false });
+    } catch {
+      set({ isLoading: false });
+    }
   },
 }));

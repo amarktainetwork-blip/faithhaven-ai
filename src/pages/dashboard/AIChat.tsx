@@ -13,39 +13,21 @@ import {
 } from 'lucide-react';
 import { useChatStore, useAuthStore } from '@/store';
 import { toast } from 'sonner';
+import { apiRequest, getApiBaseUrl } from '@/lib/api';
 
-// Mock AI responses - in production, this would call OpenAI API
-const mockAIResponses: Record<string, string> = {
-  'hello': 'Hello! I\'m your FaithHaven AI mentor. How can I help you grow in your faith today?',
-  'hi': 'Hi there! It\'s wonderful to connect with you. What\'s on your heart today?',
-  'prayer': 'Prayer is our direct line to God. The Bible tells us in Philippians 4:6-7 to "not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God." Would you like me to help you craft a prayer?',
-  'bible': 'The Word of God is living and active! Hebrews 4:12 tells us it "penetrates even to dividing soul and spirit, joints and marrow." What scripture or topic would you like to explore?',
-  'faith': 'Faith is confidence in what we hope for and assurance about what we do not see (Hebrews 11:1). It\'s the foundation of our relationship with God. How can I help strengthen your faith today?',
-  'help': 'I\'m here to help! I can assist with:\n• Bible study and scripture interpretation\n• Prayer guidance\n• Faith questions\n• Daily devotionals\n• Theological discussions\n• And much more!\n\nWhat would you like to talk about?',
-  'anxiety': 'I understand how difficult anxiety can be. The Bible offers us great comfort in Philippians 4:6-7: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."\n\nWould you like me to suggest some scriptures for peace, or help you pray through this?',
-  'peace': 'Jesus said in John 14:27: "Peace I leave with you; my peace I give you. I do not give to you as the world gives. Do not let your hearts be troubled and do not be afraid."\n\nTrue peace comes from knowing Christ and trusting in His sovereignty. How can I help you find His peace today?',
-  'love': 'The greatest commandment is to love God and love others (Matthew 22:37-39). 1 Corinthians 13:4-8 beautifully describes love: "Love is patient, love is kind. It does not envy, it does not boast, it is not proud..."\n\nHow can I help you grow in love today?',
-};
-
-const getAIResponse = (message: string): string => {
-  const lowerMsg = message.toLowerCase();
-  
-  for (const [key, response] of Object.entries(mockAIResponses)) {
-    if (lowerMsg.includes(key)) {
-      return response;
-    }
+const getAIResponse = async (message: string): Promise<{ content: string; sources?: string[] }> => {
+  try {
+    const response = await apiRequest<{ content: string; sources?: string[] }>('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ prompt: message }),
+    });
+    return response;
+  } catch {
+    return {
+      content: `I could not reach the AI backend at ${getApiBaseUrl()}. Please ensure the API is online and try again.`,
+      sources: ['Local fallback'],
+    };
   }
-  
-  // Default responses
-  const defaults = [
-    "That's a beautiful question. Let me share some thoughts from Scripture...",
-    "I appreciate you sharing that with me. From a Christian perspective...",
-    "What a wonderful topic to explore! The Bible has much to say about this...",
-    "Thank you for trusting me with this. Let's look at what God's Word teaches us...",
-    "I'm here to walk alongside you in your faith journey. Here's what I can share...",
-  ];
-  
-  return defaults[Math.floor(Math.random() * defaults.length)];
 };
 
 const quickPrompts = [
@@ -97,15 +79,12 @@ export default function AIChat() {
 
     // Get AI response
     setIsTyping(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const response = getAIResponse(userMessage);
+    const response = await getAIResponse(userMessage);
     addMessage({ 
       role: 'assistant', 
-      content: response,
-      sources: ['Scripture', 'Christian Tradition'],
+      content: response.content,
+      sources: response.sources || ['FaithHaven API'],
     });
-    
     setIsTyping(false);
   };
 
@@ -115,7 +94,7 @@ export default function AIChat() {
       toast.success('Admin panel unlocked!');
       setPasswordInput('');
     } else {
-      toast.error('Incorrect password');
+      toast.error('Admin unlock is server-controlled in production.');
       setPasswordInput('');
     }
   };
@@ -249,7 +228,7 @@ export default function AIChat() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ask about faith, prayer, Scripture, or anything on your heart..."
               className="flex-1 h-12 px-4 rounded-xl border border-[hsl(48,30%,88%)] focus:border-[hsl(210,70%,60%)] focus:ring-2 focus:ring-[hsl(210,70%,60%)]/20 outline-none transition-all"
               disabled={isTyping}
@@ -292,7 +271,7 @@ export default function AIChat() {
               placeholder="Enter password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
               className="w-full h-12 px-4 rounded-xl border border-[hsl(48,30%,88%)] focus:border-[hsl(210,70%,60%)] focus:ring-2 focus:ring-[hsl(210,70%,60%)]/20 outline-none transition-all mb-4"
             />
             <div className="flex gap-3">

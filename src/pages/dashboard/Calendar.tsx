@@ -16,9 +16,13 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<{
+    title: string;
+    type: keyof typeof eventTypes;
+    description: string;
+  }>({
     title: '',
-    type: 'personal' as const,
+    type: 'personal',
     description: '',
   });
 
@@ -178,7 +182,7 @@ export default function Calendar() {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Event Type</label>
                 <select
                   value={newEvent.type}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, type: e.target.value as any }))}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, type: e.target.value as keyof typeof eventTypes }))}
                   className="w-full h-12 px-4 rounded-xl border border-[hsl(48,30%,88%)] focus:border-[hsl(210,70%,60%)] focus:ring-2 focus:ring-[hsl(210,70%,60%)]/20 outline-none transition-all bg-white"
                 >
                   {Object.entries(eventTypes).map(([key, { label }]) => (

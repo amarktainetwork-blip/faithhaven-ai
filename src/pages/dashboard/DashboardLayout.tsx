@@ -21,7 +21,7 @@ import {
   Shield,
   Headphones
 } from 'lucide-react';
-import { useAuthStore, useUIStore, useChatStore } from '@/store';
+import { useAuthStore, useUIStore } from '@/store';
 import { toast } from 'sonner';
 
 const mainNavItems = [
@@ -52,8 +52,8 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
-  const { adminUnlocked } = useChatStore();
+  const { sidebarOpen, toggleSidebar } = useUIStore();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -97,7 +97,7 @@ export default function DashboardLayout() {
           <span className="text-xl font-bold text-slate-800">FaithHaven</span>
         </Link>
         <button
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setIsMobileMenuOpen(false)}
           className="lg:hidden p-2 text-slate-400 hover:text-slate-600"
         >
           <X className="w-5 h-5" />
@@ -113,7 +113,7 @@ export default function DashboardLayout() {
           <NavSection title="Community" items={communityNavItems} />
           
           {/* Admin Panel (only if unlocked) */}
-          {adminUnlocked && (
+          {user?.role === 'admin' && (
             <div className="space-y-1">
               <h4 className="px-4 py-2 text-xs font-semibold text-[hsl(48,80%,45%)] uppercase tracking-wider">
                 Admin

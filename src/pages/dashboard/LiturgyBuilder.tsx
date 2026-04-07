@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { Scroll, BookOpen, Music, Copy, Download } from 'lucide-react';
+import { Scroll, BookOpen, Music, Copy, Download, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
-const liturgyParts = [
+type LiturgySection = 'call' | 'prayer' | 'hymn1' | 'reading' | 'sermon' | 'hymn2' | 'offering' | 'benediction';
+
+type LiturgyContent = Record<LiturgySection, string>;
+
+const liturgyParts: Array<{ id: LiturgySection; label: string; icon: LucideIcon }> = [
   { id: 'call', label: 'Call to Worship', icon: BookOpen },
   { id: 'prayer', label: 'Opening Prayer', icon: Scroll },
   { id: 'hymn1', label: 'First Hymn', icon: Music },
@@ -16,7 +20,7 @@ const liturgyParts = [
 export default function LiturgyBuilder() {
   const [denomination, setDenomination] = useState('anglican');
   const [occasion, setOccasion] = useState('sunday');
-  const [generatedLiturgy, setGeneratedLiturgy] = useState<any>(null);
+  const [generatedLiturgy, setGeneratedLiturgy] = useState<LiturgyContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -41,6 +45,17 @@ export default function LiturgyBuilder() {
     navigator.clipboard.writeText(JSON.stringify(generatedLiturgy, null, 2));
     toast.success('Liturgy copied to clipboard');
   };
+  const handleDownload = () => {
+    if (!generatedLiturgy) return;
+    const blob = new Blob([JSON.stringify(generatedLiturgy, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `liturgy-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <div className="h-full flex flex-col">
@@ -115,7 +130,7 @@ export default function LiturgyBuilder() {
                 <button onClick={handleCopy} className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
                   <Copy className="w-5 h-5 text-slate-500" />
                 </button>
-                <button className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
+                <button onClick={handleDownload} className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
                   <Download className="w-5 h-5 text-slate-500" />
                 </button>
               </div>

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Cross, Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/store';
+import { useI18n } from '@/i18n/I18nProvider';
 
 const navLinks = [
-  { label: 'Features', href: '/#features' },
-  { label: 'Pricing', href: '/#pricing' },
-  { label: 'About', href: '/about' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Contact', href: '/contact' },
+  { key: 'nav.features' as const, href: '/#features' },
+  { key: 'nav.pricing' as const, href: '/#pricing' },
+  { key: 'nav.about' as const, href: '/about' },
+  { key: 'nav.blog' as const, href: '/blog' },
+  { key: 'nav.contact' as const, href: '/contact' },
 ];
 
 export default function Navbar() {
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { t } = useI18n();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,11 +51,11 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
               <Link
-                key={link.label}
+                key={link.key}
                 to={link.href}
                 className="text-slate-600 hover:text-[hsl(210,70%,50%)] transition-colors font-medium"
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             ))}
           </div>
@@ -65,7 +67,7 @@ export default function Navbar() {
                 to="/dashboard"
                 className="px-6 py-2.5 bg-[hsl(210,70%,60%)] text-white rounded-xl font-medium hover:bg-[hsl(210,60%,50%)] transition-colors"
               >
-                Dashboard
+                {t('nav.dashboard')}
               </Link>
             ) : (
               <>
@@ -73,13 +75,13 @@ export default function Navbar() {
                   to="/login"
                   className="text-slate-600 hover:text-[hsl(210,70%,50%)] transition-colors font-medium"
                 >
-                  Sign In
+                  {t('nav.signIn')}
                 </Link>
                 <Link
                   to="/register"
                   className="px-6 py-2.5 bg-[hsl(210,70%,60%)] text-white rounded-xl font-medium hover:bg-[hsl(210,60%,50%)] transition-colors"
                 >
-                  Get Started
+                  {t('nav.getStarted')}
                 </Link>
               </>
             )}
@@ -101,12 +103,12 @@ export default function Navbar() {
           <div className="px-4 py-6 space-y-4">
             {navLinks.map((link) => (
               <Link
-                key={link.label}
+                key={link.key}
                 to={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block text-slate-600 hover:text-[hsl(210,70%,50%)] transition-colors font-medium py-2"
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             ))}
             <div className="pt-4 border-t border-[hsl(48,30%,88%)] space-y-3">
@@ -116,7 +118,7 @@ export default function Navbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block w-full text-center px-6 py-3 bg-[hsl(210,70%,60%)] text-white rounded-xl font-medium"
                 >
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
               ) : (
                 <>
@@ -125,14 +127,14 @@ export default function Navbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="block w-full text-center px-6 py-3 text-slate-600 font-medium"
                   >
-                    Sign In
+                    {t('nav.signIn')}
                   </Link>
                   <Link
                     to="/register"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="block w-full text-center px-6 py-3 bg-[hsl(210,70%,60%)] text-white rounded-xl font-medium"
                   >
-                    Get Started
+                    {t('nav.getStarted')}
                   </Link>
                 </>
               )}

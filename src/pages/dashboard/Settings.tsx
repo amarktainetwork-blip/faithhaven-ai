@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { User, Mail, Lock, Bell, Globe, Church, Save } from 'lucide-react';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useUIStore } from '@/store';
 import type { Denomination, Language } from '@/types';
 import { toast } from 'sonner';
 
 export default function Settings() {
-  const { user, updateProfile } = useAuthStore();
+  const { user, updateProfile, changePassword } = useAuthStore();
+  const { theme, toggleTheme } = useUIStore();
   const [activeTab, setActiveTab] = useState('profile');
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -14,9 +15,31 @@ export default function Settings() {
     language: (user?.language || 'en') as Language,
   });
 
-  const handleSave = () => {
-    updateProfile(formData);
-    toast.success('Settings saved successfully');
+  const [notificationPrefs, setNotificationPrefs] = useState([
+    { key: 'devotional', label: 'Daily Devotional Reminders', enabled: true },
+    { key: 'prayer', label: 'Prayer Request Updates', enabled: true },
+    { key: 'features', label: 'New Features & Updates', enabled: false },
+    { key: 'community', label: 'Community Activity', enabled: true },
+  ]);
+  const [passwords, setPasswords] = useState({ current: '', next: '' });
+
+  const handleSave = async () => {
+    const ok = await updateProfile(formData);
+    if (!ok) {
+      toast.error('Could not save profile settings.');
+      return;
+    }
+
+    if (passwords.current && passwords.next) {
+      const changed = await changePassword(passwords.current, passwords.next);
+      if (!changed) {
+        toast.error('Profile saved, but password update failed.');
+        return;
+      }
+      setPasswords({ current: '', next: '' });
+    }
+
+    toast.success(`Settings saved (${formData.language.toUpperCase()})`);
   };
 
   const tabs = [
@@ -133,6 +156,16 @@ export default function Settings() {
                     </select>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Theme Mode</label>
+                  <button
+                    onClick={toggleTheme}
+                    className="w-full h-12 px-4 rounded-xl border border-[hsl(48,30%,88%)] text-left text-slate-700 hover:bg-[hsl(48,60%,96%)]"
+                  >
+                    {theme === 'dark' ? 'Dark' : 'Light'} (tap to switch)
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -141,17 +174,13 @@ export default function Settings() {
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-6">Notification Preferences</h2>
               <div className="space-y-4">
-                {[
-                  { label: 'Daily Devotional Reminders', default: true },
-                  { label: 'Prayer Request Updates', default: true },
-                  { label: 'New Features & Updates', default: false },
-                  { label: 'Community Activity', default: true },
-                ].map((item) => (
+                {notificationPrefs.map((item) => (
                   <label key={item.label} className="flex items-center justify-between p-4 bg-[hsl(48,60%,98%)] rounded-xl cursor-pointer">
                     <span className="text-slate-700">{item.label}</span>
                     <input
                       type="checkbox"
-                      defaultChecked={item.default}
+                      checked={item.enabled}
+                      onChange={() => setNotificationPrefs((prev) => prev.map((p) => p.key === item.key ? { ...p, enabled: !p.enabled } : p))}
                       className="w-5 h-5 rounded border-slate-300 text-[hsl(210,70%,60%)] focus:ring-[hsl(210,70%,60%)]"
                     />
                   </label>
@@ -171,6 +200,8 @@ export default function Settings() {
                     <input
                       type="password"
                       placeholder="Enter current password"
+                      value={passwords.current}
+                      onChange={(e) => setPasswords((prev) => ({ ...prev, current: e.target.value }))}
                       className="w-full h-12 pl-12 pr-4 rounded-xl border border-[hsl(48,30%,88%)] focus:border-[hsl(210,70%,60%)] focus:ring-2 focus:ring-[hsl(210,70%,60%)]/20 outline-none transition-all"
                     />
                   </div>
@@ -182,9 +213,21 @@ export default function Settings() {
                     <input
                       type="password"
                       placeholder="Enter new password"
+                      value={passwords.next}
+                      onChange={(e) => setPasswords((prev) => ({ ...prev, next: e.target.value }))}
                       className="w-full h-12 pl-12 pr-4 rounded-xl border border-[hsl(48,30%,88%)] focus:border-[hsl(210,70%,60%)] focus:ring-2 focus:ring-[hsl(210,70%,60%)]/20 outline-none transition-all"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Theme Mode</label>
+                  <button
+                    onClick={toggleTheme}
+                    className="w-full h-12 px-4 rounded-xl border border-[hsl(48,30%,88%)] text-left text-slate-700 hover:bg-[hsl(48,60%,96%)]"
+                  >
+                    {theme === 'dark' ? 'Dark' : 'Light'} (tap to switch)
+                  </button>
                 </div>
               </div>
             </div>

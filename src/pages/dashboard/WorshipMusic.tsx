@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Music, Play, Pause, Heart, Search, ListMusic } from 'lucide-react';
+import { useWorshipStore } from '@/store';
 
-const playlists = [
+const fallbackPlaylists = [
   { id: 1, name: 'Sunday Worship', songs: 24, color: 'from-[hsl(210,70%,60%)] to-[hsl(260,50%,65%)]' },
   { id: 2, name: 'Morning Devotion', songs: 18, color: 'from-[hsl(48,90%,65%)] to-[hsl(35,80%,60%)]' },
   { id: 3, name: 'Prayer & Meditation', songs: 32, color: 'from-[hsl(150,30%,55%)] to-[hsl(180,40%,50%)]' },
 ];
 
-const songs = [
+const fallbackSongs = [
   { id: 1, title: 'Amazing Grace', artist: 'Traditional', duration: '3:45', category: 'Hymns' },
   { id: 2, title: '10,000 Reasons', artist: 'Matt Redman', duration: '4:12', category: 'Contemporary' },
   { id: 3, title: 'What a Beautiful Name', artist: 'Hillsong Worship', duration: '5:08', category: 'Contemporary' },
@@ -16,11 +17,20 @@ const songs = [
 ];
 
 export default function WorshipMusic() {
+  const { songs, playlists, fetchSongs } = useWorshipStore();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSong, setCurrentSong] = useState(songs[0]);
+  const [currentSongId, setCurrentSongId] = useState<string>(String(fallbackSongs[0].id));
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredSongs = songs.filter(song =>
+  useEffect(() => {
+    fetchSongs();
+  }, [fetchSongs]);
+
+  const activeSongs = songs.length > 0 ? songs : fallbackSongs;
+  const activePlaylists = playlists.length > 0 ? playlists : fallbackPlaylists;
+  const currentSong = activeSongs.find((song) => String(song.id) === currentSongId) || activeSongs[0];
+
+  const filteredSongs = activeSongs.filter(song =>
     song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     song.artist.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -46,7 +56,7 @@ export default function WorshipMusic() {
 
       {/* Playlists */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {playlists.map((playlist) => (
+        {activePlaylists.map((playlist) => (
           <div
             key={playlist.id}
             className={`bg-gradient-to-br ${playlist.color} rounded-2xl p-6 text-white cursor-pointer hover:scale-105 transition-transform`}
@@ -65,8 +75,8 @@ export default function WorshipMusic() {
             <Music className="w-8 h-8 text-white" />
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-slate-800">{currentSong.title}</h3>
-            <p className="text-slate-500">{currentSong.artist}</p>
+            <h3 className="font-bold text-slate-800">{currentSong?.title}</h3>
+            <p className="text-slate-500">{currentSong?.artist}</p>
           </div>
           <button
             onClick={() => setIsPlaying(!isPlaying)}
@@ -86,15 +96,15 @@ export default function WorshipMusic() {
           {filteredSongs.map((song) => (
             <div
               key={song.id}
-              onClick={() => setCurrentSong(song)}
+              onClick={() => setCurrentSongId(String(song.id))}
               className={`flex items-center gap-4 p-4 cursor-pointer transition-colors ${
-                currentSong.id === song.id ? 'bg-[hsl(210,80%,95%)]' : 'hover:bg-[hsl(48,60%,98%)]'
+                String(currentSong?.id) === String(song.id) ? 'bg-[hsl(210,80%,95%)]' : 'hover:bg-[hsl(48,60%,98%)]'
               }`}
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setCurrentSong(song);
+                  setCurrentSongId(String(song.id));
                   setIsPlaying(true);
                 }}
                 className="w-10 h-10 rounded-full bg-[hsl(48,60%,96%)] flex items-center justify-center hover:bg-[hsl(210,70%,60%)] hover:text-white transition-colors"
@@ -102,7 +112,7 @@ export default function WorshipMusic() {
                 <Play className="w-4 h-4 ml-0.5" />
               </button>
               <div className="flex-1">
-                <p className={`font-medium ${currentSong.id === song.id ? 'text-[hsl(210,70%,50%)]' : 'text-slate-800'}`}>
+                <p className={`font-medium ${String(currentSong?.id) === String(song.id) ? 'text-[hsl(210,70%,50%)]' : 'text-slate-800'}`}>
                   {song.title}
                 </p>
                 <p className="text-sm text-slate-500">{song.artist}</p>
