@@ -2,11 +2,20 @@ import { useState } from 'react';
 import { Mic, Sparkles, Copy, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface SermonDraft {
+  title: string;
+  scripture: string;
+  introduction: string;
+  mainPoints: string[];
+  conclusion: string;
+  illustrations: string[];
+}
+
 export default function SermonCreator() {
   const [topic, setTopic] = useState('');
   const [scripture, setScripture] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [sermon, setSermon] = useState<any>(null);
+  const [sermon, setSermon] = useState<SermonDraft | null>(null);
 
   const handleGenerate = async () => {
     if (!topic || !scripture) {
@@ -39,6 +48,17 @@ export default function SermonCreator() {
     navigator.clipboard.writeText(JSON.stringify(sermon, null, 2));
     toast.success('Sermon copied to clipboard');
   };
+  const handleDownload = () => {
+    if (!sermon) return;
+    const blob = new Blob([JSON.stringify(sermon, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sermon-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <div className="h-full flex flex-col">
@@ -101,7 +121,7 @@ export default function SermonCreator() {
                 <button onClick={handleCopy} className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
                   <Copy className="w-5 h-5 text-slate-500" />
                 </button>
-                <button className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
+                <button onClick={handleDownload} className="p-2 hover:bg-[hsl(48,60%,96%)] rounded-lg transition-colors">
                   <Download className="w-5 h-5 text-slate-500" />
                 </button>
               </div>

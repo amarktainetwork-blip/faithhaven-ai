@@ -100,10 +100,10 @@ export default function PressPage() {
                   Download our official brand assets, logos, and press materials 
                   for use in articles and publications.
                 </p>
-                <button className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[hsl(210,70%,50%)] rounded-xl font-semibold hover:bg-[hsl(48,90%,92%)] transition-colors">
+                <a href="/media-kit.txt" download className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[hsl(210,70%,50%)] rounded-xl font-semibold hover:bg-[hsl(48,90%,92%)] transition-colors">
                   <Download className="w-5 h-5" />
                   Download Media Kit
-                </button>
+                </a>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/10 rounded-xl p-6 text-center">

@@ -18,12 +18,13 @@ export default function ContactPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+    const subject = encodeURIComponent(`[FaithHaven Contact] ${formData.subject}`);
+    const body = encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`);
+    window.location.href = `mailto:hello@faithhaven.ai?subject=${subject}&body=${body}`;
+
     setIsSubmitting(false);
     setIsSubmitted(true);
-    toast.success('Message sent successfully!');
+    toast.success('Your email client has been opened to send this message.');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

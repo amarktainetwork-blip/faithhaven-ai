@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, BookOpen } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
 
-const books = [
+const fallbackBooks = [
   { name: 'Genesis', chapters: 50 },
   { name: 'Psalms', chapters: 150 },
   { name: 'Proverbs', chapters: 31 },
@@ -14,6 +15,19 @@ export default function BibleAudio() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentBook, setCurrentBook] = useState('John');
   const [progress] = useState(35);
+  const [books, setBooks] = useState(fallbackBooks);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const data = await apiRequest<{ books: Array<{ name: string; chapters: number }> }>('/api/content/bible-audio/books');
+        setBooks(data.books);
+      } catch {
+        setBooks(fallbackBooks);
+      }
+    };
+    run();
+  }, []);
 
   return (
     <div className="h-full flex flex-col">

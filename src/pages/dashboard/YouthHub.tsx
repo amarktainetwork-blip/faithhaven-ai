@@ -16,7 +16,8 @@ const discussionQuestions = [
 ];
 
 export default function YouthHub() {
-  const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<number | null>(topics[0]?.id ?? null);
+  const selectedTopicData = topics.find((topic) => topic.id === selectedTopic);
 
   return (
     <div className="h-full flex flex-col">
@@ -51,6 +52,12 @@ export default function YouthHub() {
             </div>
           ))}
         </div>
+          {selectedTopicData && (
+            <div className="bg-white rounded-2xl p-6 border border-[hsl(48,30%,88%)]">
+              <h3 className="font-bold text-slate-800 mb-2">{selectedTopicData.title}</h3>
+              <p className="text-sm text-slate-600">Category: {selectedTopicData.category}. This lesson includes scripture prompts, discussion starters, and a weekly challenge.</p>
+            </div>
+          )}
 
         {/* Sidebar */}
         <div className="space-y-6">
@@ -60,9 +67,9 @@ export default function YouthHub() {
             <p className="text-white/80 text-sm mb-4">
               Access discussion guides and activity ideas for your youth group.
             </p>
-            <button className="w-full py-2.5 bg-white text-[hsl(210,70%,50%)] rounded-xl font-medium text-sm">
+            <a href="/help" className="block text-center w-full py-2.5 bg-white text-[hsl(210,70%,50%)] rounded-xl font-medium text-sm">
               View Resources
-            </button>
+            </a>
           </div>
 
           <div className="bg-white rounded-2xl border border-[hsl(48,30%,88%)] p-6">

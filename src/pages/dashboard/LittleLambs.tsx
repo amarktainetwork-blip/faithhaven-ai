@@ -16,6 +16,7 @@ const activities = [
 
 export default function LittleLambs() {
   const [selectedAge, setSelectedAge] = useState('all');
+  const filteredStories = stories.filter((story) => selectedAge === 'all' || story.ageRange.includes(selectedAge.split('-')[0]));
 
   return (
     <div className="h-full flex flex-col">
@@ -45,7 +46,7 @@ export default function LittleLambs() {
         {/* Stories */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-lg font-bold text-slate-800">Bible Stories</h2>
-          {stories.map((story) => (
+          {filteredStories.map((story) => (
             <div
               key={story.id}
               className="bg-white rounded-2xl p-6 border border-[hsl(48,30%,88%)] card-hover cursor-pointer"
