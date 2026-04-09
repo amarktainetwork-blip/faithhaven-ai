@@ -5,6 +5,9 @@ on:
     branches: [main, master, work]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
     name: Frontend — lint & build
