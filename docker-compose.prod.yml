@@ -1,0 +1,70 @@
+services:
+  # ─── Reverse proxy with automatic TLS ───
+  caddy:
+    image: caddy:2-alpine
+    container_name: faithhaven-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      faithhaven-api:
+        condition: service_healthy
+      faithhaven-web:
+        condition: service_started
+
+  # ─── Backend API ───
+  faithhaven-api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: faithhaven-api
+    restart: unless-stopped
+    env_file:
+      - .env.backend
+    environment:
+      - DATABASE_URL=postgresql://faithhaven:${POSTGRES_PASSWORD}@db:5432/faithhaven
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ─── Frontend (static files served by nginx) ───
+  faithhaven-web:
+    build: .
+    container_name: faithhaven-web
+    restart: unless-stopped
+
+  # ─── PostgreSQL database ───
+  db:
+    image: postgres:16-alpine
+    container_name: faithhaven-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: faithhaven
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: faithhaven
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U faithhaven"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

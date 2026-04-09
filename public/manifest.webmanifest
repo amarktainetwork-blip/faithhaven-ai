@@ -1,15 +1,25 @@
 {
   "name": "FaithHaven AI",
   "short_name": "FaithHaven",
+  "description": "Your personal AI mentor for a deeper Christian life",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fdf9ec",
-  "theme_color": "#3b82f6",
+  "theme_color": "#5b93d6",
+  "orientation": "any",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon.svg",
-      "sizes": "64x64",
-      "type": "image/svg+xml"
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

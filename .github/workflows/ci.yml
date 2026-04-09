@@ -2,18 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, work ]
+    branches: [main, master, work]
   pull_request:
 
 jobs:
-  lint-build:
+  frontend:
+    name: Frontend — lint & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: i18n key check
+        run: node scripts/check-i18n.cjs
+
+  backend:
+    name: Backend — tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: cd backend && npm ci
+      - run: NODE_ENV=test node --test backend/src/server.test.js

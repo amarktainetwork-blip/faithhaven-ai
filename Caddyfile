@@ -1,0 +1,36 @@
+# FaithHaven production Caddyfile
+# Automatic HTTPS via Let's Encrypt for faithhaven.amarktai.com
+#
+# Usage: Place this at the project root, mount into the caddy container.
+
+faithhaven.amarktai.com {
+	# Proxy API requests to backend
+	handle /api/* {
+		reverse_proxy faithhaven-api:4000
+	}
+
+	handle /health {
+		reverse_proxy faithhaven-api:4000
+	}
+
+	# Serve frontend
+	handle {
+		reverse_proxy faithhaven-web:80
+	}
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+
+	# Logging
+	log {
+		output stdout
+		format json
+	}
+}
