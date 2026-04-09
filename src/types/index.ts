@@ -14,7 +14,8 @@ export type Denomination =
 
 export type Language = 'en' | 'af' | 'zu' | 'xh';
 
-export type SubscriptionPlan = 'free' | 'individual' | 'family' | 'congregation';
+export type SubscriptionPlan = 'free' | 'individual' | 'family';
+export type BillingCycle = 'monthly' | 'yearly';
 
 export interface User {
   id: string;
@@ -113,31 +114,6 @@ export interface WorshipSong {
   chords?: string;
 }
 
-export interface GeoIPData {
-  country: string;
-  countryCode: string;
-  currency: string;
-  currencySymbol: string;
-  exchangeRate: number;
-}
-
-export interface APIConfig {
-  provider: "payfast" | "stripe";
-  environment: "sandbox" | "live";
-  callbackUrl: string;
-}
-
-export interface PricingTier {
-  id: SubscriptionPlan;
-  name: string;
-  description: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  features: string[];
-  notIncluded?: string[];
-  popular?: boolean;
-}
-
 export interface Testimonial {
   id: string;
   name: string;
@@ -145,42 +121,4 @@ export interface Testimonial {
   denomination: string;
   content: string;
   avatar?: string;
-}
-
-export interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-}
-
-export interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  date: Date;
-  category: string;
-  image?: string;
-  tags: string[];
-}
-
-export interface JobListing {
-  id: string;
-  title: string;
-  department: string;
-  location: string;
-  type: 'full-time' | 'part-time' | 'contract';
-  description: string;
-  requirements: string[];
-  postedAt: Date;
-}
-
-export interface PressRelease {
-  id: string;
-  title: string;
-  date: Date;
-  excerpt: string;
-  content: string;
 }

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -9,9 +10,16 @@ import { DatabaseSync } from 'node:sqlite';
 
 dotenv.config();
 
+/* ---------- Structured logging ---------- */
+const log = {
+  info: (msg, data = {}) => console.log(JSON.stringify({ level: 'info', ts: new Date().toISOString(), msg, ...data })),
+  warn: (msg, data = {}) => console.log(JSON.stringify({ level: 'warn', ts: new Date().toISOString(), msg, ...data })),
+  error: (msg, data = {}) => console.error(JSON.stringify({ level: 'error', ts: new Date().toISOString(), msg, ...data })),
+};
+
 const app = express();
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || '';
 const PAYFAST_IP_WHITELIST = process.env.PAYFAST_IP_WHITELIST?.split(',').map((v) => v.trim()).filter(Boolean) || [];
@@ -19,6 +27,25 @@ const AUTH_RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS |
 const AUTH_RATE_LIMIT_MAX = Number(process.env.AUTH_RATE_LIMIT_MAX || 20);
 const RESET_TOKEN_TTL_MINUTES = Number(process.env.RESET_TOKEN_TTL_MINUTES || 30);
 const VERIFY_TOKEN_TTL_HOURS = Number(process.env.VERIFY_TOKEN_TTL_HOURS || 24);
+
+/* ---------- Cookie / session constants ---------- */
+const COOKIE_NAME = 'fh_session';
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
+const IS_PROD = process.env.NODE_ENV === 'production';
+const cookieOpts = {
+  httpOnly: true,
+  secure: IS_PROD,
+  sameSite: IS_PROD ? 'none' : 'lax',
+  domain: COOKIE_DOMAIN,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+/* ---------- Subscription plan constants (ZAR cents) ---------- */
+const SUBSCRIPTION_PLANS = {
+  individual: { monthly: 1900, yearly: 19000, maxMembers: 1, label: 'Individual' },
+  family: { monthly: 3900, yearly: 39000, maxMembers: 4, label: 'Family' },
+};
 
 const requireProductionSecrets = () => {
   if (process.env.NODE_ENV !== 'production') return;
@@ -29,7 +56,23 @@ const requireProductionSecrets = () => {
 
 requireProductionSecrets();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*' }));
+/* ---------- Middleware ---------- */
+app.set('trust proxy', 1);
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+  origin: CORS_ORIGIN && CORS_ORIGIN.length > 0 ? CORS_ORIGIN : 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 const sqlitePath = path.join(process.cwd(), 'backend', 'data', 'app.db');
@@ -73,16 +116,14 @@ const readDB = () => {
 };
 
 const writeDB = (data) => {
-  const tx = sqlite.transaction((dbData) => {
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('users', JSON.stringify(dbData.users || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('transactions', JSON.stringify(dbData.transactions || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('authTokens', JSON.stringify(dbData.authTokens || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('auditLogs', JSON.stringify(dbData.auditLogs || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('calendarEvents', JSON.stringify(dbData.calendarEvents || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('devotionals', JSON.stringify(dbData.devotionals || []));
-    sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)').run('prayerWall', JSON.stringify(dbData.prayerWall || []));
-  });
-  tx(data);
+  const stmt = sqlite.prepare('INSERT OR REPLACE INTO kv_store(key, value) VALUES (?, ?)');
+  stmt.run('users', JSON.stringify(data.users || []));
+  stmt.run('transactions', JSON.stringify(data.transactions || []));
+  stmt.run('authTokens', JSON.stringify(data.authTokens || []));
+  stmt.run('auditLogs', JSON.stringify(data.auditLogs || []));
+  stmt.run('calendarEvents', JSON.stringify(data.calendarEvents || []));
+  stmt.run('devotionals', JSON.stringify(data.devotionals || []));
+  stmt.run('prayerWall', JSON.stringify(data.prayerWall || []));
 };
 
 const hashPassword = (password) => {
@@ -123,8 +164,9 @@ const authRateLimitMiddleware = (req, res, next) => {
 };
 
 const authMiddleware = (req, res, next) => {
-  const header = req.headers.authorization || '';
-  const token = header.replace('Bearer ', '');
+  const cookieToken = req.cookies?.[COOKIE_NAME];
+  const headerToken = (req.headers.authorization || '').replace('Bearer ', '');
+  const token = cookieToken || headerToken;
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -196,7 +238,8 @@ app.post('/api/auth/register', authRateLimitMiddleware, async (req, res) => {
 
   const token = jwt.sign({ sub: user.id, email: user.email, role: user.role, tv: user.tokenVersion }, JWT_SECRET, { expiresIn: '7d' });
   const { passwordHash: _ph, ...safeUser } = user;
-  res.json({ token, user: safeUser, verifyToken });
+  res.cookie(COOKIE_NAME, token, cookieOpts);
+  res.json({ user: safeUser });
 });
 
 app.post('/api/auth/login', authRateLimitMiddleware, async (req, res) => {
@@ -214,7 +257,8 @@ app.post('/api/auth/login', authRateLimitMiddleware, async (req, res) => {
   logAuditEvent(db, 'auth.login', { userId: user.id });
   writeDB(db);
   const { passwordHash: _ph, ...safeUser } = user;
-  res.json({ token, user: safeUser });
+  res.cookie(COOKIE_NAME, token, cookieOpts);
+  res.json({ user: safeUser });
 });
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
@@ -299,6 +343,12 @@ app.post('/api/auth/logout-all', authMiddleware, (req, res) => {
   user.updatedAt = new Date().toISOString();
   logAuditEvent(db, 'auth.logout_all', { userId: user.id });
   writeDB(db);
+  res.clearCookie(COOKIE_NAME, { ...cookieOpts, maxAge: 0 });
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  res.clearCookie(COOKIE_NAME, { ...cookieOpts, maxAge: 0 });
   res.json({ ok: true });
 });
 
@@ -343,13 +393,73 @@ app.post('/api/user/change-password', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
-const bibleAnchors = {
-  salvation: 'John 3:16',
-  anxiety: 'Philippians 4:6-7',
-  faith: 'Hebrews 11:1',
-  wisdom: 'James 1:5',
-  love: '1 Corinthians 13:4-7',
-  peace: 'John 14:27',
+/* ---------- KJV Bible Verses for RAG ---------- */
+const KJV_VERSES = [
+  { ref: 'John 3:16', text: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.' },
+  { ref: 'Psalm 23:1', text: 'The LORD is my shepherd; I shall not want.' },
+  { ref: 'Proverbs 3:5-6', text: 'Trust in the LORD with all thine heart; and lean not unto thine own understanding. In all thy ways acknowledge him, and he shall direct thy paths.' },
+  { ref: 'Romans 8:28', text: 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.' },
+  { ref: 'Philippians 4:13', text: 'I can do all things through Christ which strengtheneth me.' },
+  { ref: 'Isaiah 40:31', text: 'But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint.' },
+  { ref: 'Jeremiah 29:11', text: 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.' },
+  { ref: 'Matthew 11:28', text: 'Come unto me, all ye that labour and are heavy laden, and I will give you rest.' },
+  { ref: 'Romans 10:9', text: 'That if thou shalt confess with thy mouth the Lord Jesus, and shalt believe in thine heart that God hath raised him from the dead, thou shalt be saved.' },
+  { ref: 'Psalm 46:1', text: 'God is our refuge and strength, a very present help in trouble.' },
+  { ref: '2 Timothy 1:7', text: 'For God hath not given us the spirit of fear; but of power, and of love, and of a sound mind.' },
+  { ref: 'Matthew 6:33', text: 'But seek ye first the kingdom of God, and his righteousness; and all these things shall be added unto you.' },
+  { ref: 'Romans 12:2', text: 'And be not conformed to this world: but be ye transformed by the renewing of your mind, that ye may prove what is that good, and acceptable, and perfect, will of God.' },
+  { ref: 'Psalm 119:105', text: 'Thy word is a lamp unto my feet, and a light unto my path.' },
+  { ref: 'Hebrews 11:1', text: 'Now faith is the substance of things hoped for, the evidence of things not seen.' },
+  { ref: 'James 1:5', text: 'If any of you lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him.' },
+  { ref: 'Galatians 5:22-23', text: 'But the fruit of the Spirit is love, joy, peace, longsuffering, gentleness, goodness, faith, Meekness, temperance: against such there is no law.' },
+  { ref: 'Ephesians 2:8-9', text: 'For by grace are ye saved through faith; and that not of yourselves: it is the gift of God: Not of works, lest any man should boast.' },
+  { ref: '1 Corinthians 13:4-7', text: 'Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up, Doth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil; Rejoiceth not in iniquity, but rejoiceth in the truth; Beareth all things, believeth all things, hopeth all things, endureth all things.' },
+  { ref: 'Joshua 1:9', text: 'Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.' },
+  { ref: 'Psalm 27:1', text: 'The LORD is my light and my salvation; whom shall I fear? the LORD is the strength of my life; of whom shall I be afraid?' },
+  { ref: 'Isaiah 41:10', text: 'Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness.' },
+  { ref: 'Matthew 28:19-20', text: 'Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost: Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you always, even unto the end of the world.' },
+  { ref: '1 John 4:8', text: 'He that loveth not knoweth not God; for God is love.' },
+  { ref: 'Proverbs 22:6', text: 'Train up a child in the way he should go: and when he is old, he will not depart from it.' },
+  { ref: 'Psalm 37:4', text: 'Delight thyself also in the LORD: and he shall give thee the desires of thine heart.' },
+  { ref: 'Matthew 5:16', text: 'Let your light so shine before men, that they may see your good works, and glorify your Father which is in heaven.' },
+  { ref: 'Romans 5:8', text: 'But God commendeth his love toward us, in that, while we were yet sinners, Christ died for us.' },
+  { ref: 'Colossians 3:23', text: 'And whatsoever ye do, do it heartily, as to the Lord, and not unto men.' },
+  { ref: '2 Corinthians 5:17', text: 'Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.' },
+];
+
+const findRelevantVerses = (prompt) => {
+  const lower = prompt.toLowerCase();
+  const keywords = {
+    fear: ['Isaiah 41:10', '2 Timothy 1:7', 'Joshua 1:9', 'Psalm 27:1'],
+    anxiety: ['Philippians 4:13', 'Isaiah 41:10', 'Matthew 11:28', 'Psalm 46:1'],
+    love: ['1 Corinthians 13:4-7', '1 John 4:8', 'Romans 5:8', 'John 3:16'],
+    peace: ['Philippians 4:13', 'Isaiah 40:31', 'Psalm 23:1', 'Galatians 5:22-23'],
+    salvation: ['Romans 10:9', 'Ephesians 2:8-9', 'John 3:16', 'Romans 5:8'],
+    wisdom: ['James 1:5', 'Proverbs 3:5-6', 'Psalm 119:105', 'Romans 12:2'],
+    faith: ['Hebrews 11:1', 'Romans 10:9', 'Ephesians 2:8-9', 'Matthew 6:33'],
+    strength: ['Isaiah 40:31', 'Philippians 4:13', 'Joshua 1:9', 'Psalm 46:1'],
+    hope: ['Jeremiah 29:11', 'Romans 8:28', 'Hebrews 11:1', 'Isaiah 40:31'],
+    prayer: ['Matthew 6:33', 'James 1:5', 'Philippians 4:13', 'Psalm 37:4'],
+    family: ['Proverbs 22:6', 'Joshua 1:9', 'Colossians 3:23', 'Matthew 5:16'],
+    forgive: ['1 John 4:8', 'Romans 5:8', '2 Corinthians 5:17', 'Ephesians 2:8-9'],
+    children: ['Proverbs 22:6', 'Matthew 28:19-20', 'Matthew 5:16', 'Psalm 37:4'],
+  };
+
+  const matched = new Set();
+  for (const [keyword, refs] of Object.entries(keywords)) {
+    if (lower.includes(keyword)) {
+      refs.forEach(r => matched.add(r));
+    }
+  }
+
+  if (matched.size === 0) {
+    ['John 3:16', 'Psalm 23:1', 'Proverbs 3:5-6', 'Jeremiah 29:11'].forEach(r => matched.add(r));
+  }
+
+  return [...matched].slice(0, 4).map(ref => {
+    const verse = KJV_VERSES.find(v => v.ref === ref);
+    return verse || { ref, text: '' };
+  }).filter(v => v.text);
 };
 
 const bibleAudioBooks = [
@@ -379,40 +489,46 @@ app.post('/api/ai/chat', authMiddleware, async (req, res) => {
   const prompt = String(req.body?.prompt || '').trim();
   if (!prompt) return res.status(400).json({ error: 'Prompt required' });
 
-  const lowered = prompt.toLowerCase();
-  let anchor = 'faith';
-  if (lowered.includes('anx')) anchor = 'anxiety';
-  if (lowered.includes('love')) anchor = 'love';
-  if (lowered.includes('peace')) anchor = 'peace';
-  if (lowered.includes('save')) anchor = 'salvation';
-  if (lowered.includes('wisdom')) anchor = 'wisdom';
+  const verses = findRelevantVerses(prompt);
+  const sources = verses.map(v => v.ref);
 
   if (!OPENAI_API_KEY) {
+    const verseBlock = verses.map(v => `${v.ref} — "${v.text}"`).join('\n\n');
     return res.json({
-      content: `Biblical reflection (${bibleAnchors[anchor]}): Let's reflect prayerfully on your request and align your next step with Scripture.`,
-      sources: [bibleAnchors[anchor], 'FaithHaven Biblical Knowledge Base'],
+      content: `Here are Scriptures to reflect on prayerfully:\n\n${verseBlock}\n\nMay these words guide your next step in faith.`,
+      sources: [...sources, 'FaithHaven Biblical Knowledge Base'],
     });
   }
 
-  const openAIResp = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a pastoral Christian assistant grounded in Biblical teaching.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.5,
-    }),
-  });
+  const verseContext = verses.map(v => `${v.ref}: "${v.text}"`).join('\n');
+  try {
+    const openAIResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: `You are a pastoral Christian assistant grounded in Biblical teaching. Use the following KJV Scripture passages when relevant:\n${verseContext}` },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.5,
+      }),
+    });
 
-  const data = await openAIResp.json();
-  const content = data?.choices?.[0]?.message?.content || 'I am here to help you reflect biblically.';
-  res.json({ content, sources: ['OpenAI', bibleAnchors[anchor]] });
+    const data = await openAIResp.json();
+    const content = data?.choices?.[0]?.message?.content || 'I am here to help you reflect biblically.';
+    res.json({ content, sources: ['OpenAI', ...sources] });
+  } catch (err) {
+    log.error('OpenAI API call failed', { error: err.message });
+    const verseBlock = verses.map(v => `${v.ref} — "${v.text}"`).join('\n\n');
+    res.json({
+      content: `Here are Scriptures to reflect on prayerfully:\n\n${verseBlock}\n\nMay these words guide your next step in faith.`,
+      sources: [...sources, 'FaithHaven Biblical Knowledge Base'],
+    });
+  }
 });
 
 app.get('/api/content/bible-audio/books', authMiddleware, (_req, res) => {
@@ -520,6 +636,15 @@ const verifyPayfastSignature = (payload) => {
 };
 
 app.post('/api/payfast/create-checkout', authMiddleware, (req, res) => {
+  const plan = String(req.body?.plan || '').toLowerCase();
+  const billing = String(req.body?.billing || '').toLowerCase();
+  const planInfo = SUBSCRIPTION_PLANS[plan];
+  if (!planInfo || !['monthly', 'yearly'].includes(billing)) {
+    return res.status(400).json({ error: 'Invalid plan or billing cycle' });
+  }
+  const amountCents = planInfo[billing];
+  const amountRand = (amountCents / 100).toFixed(2);
+
   const payload = {
     merchant_id: process.env.PAYFAST_MERCHANT_ID || '',
     merchant_key: process.env.PAYFAST_MERCHANT_KEY || '',
@@ -527,8 +652,8 @@ app.post('/api/payfast/create-checkout', authMiddleware, (req, res) => {
     cancel_url: process.env.PAYFAST_CANCEL_URL || '',
     notify_url: process.env.PAYFAST_NOTIFY_URL || '',
     m_payment_id: crypto.randomUUID(),
-    amount: Number(req.body.amount || 0).toFixed(2),
-    item_name: req.body.item_name || 'FaithHaven Subscription',
+    amount: amountRand,
+    item_name: `FaithHaven ${planInfo.label} (${billing})`,
     email_address: req.user.email,
   };
 
@@ -538,12 +663,14 @@ app.post('/api/payfast/create-checkout', authMiddleware, (req, res) => {
   db.transactions.push({
     id: payload.m_payment_id,
     userId: req.user.sub,
+    plan,
+    billing,
     amount: payload.amount,
     status: 'pending',
     paidAt: null,
     createdAt: new Date().toISOString(),
   });
-  logAuditEvent(db, 'payment.checkout_created', { txId: payload.m_payment_id, userId: req.user.sub, amount: payload.amount });
+  logAuditEvent(db, 'payment.checkout_created', { txId: payload.m_payment_id, userId: req.user.sub, amount: payload.amount, plan, billing });
   writeDB(db);
 
   res.json({
@@ -586,7 +713,14 @@ app.post('/api/payfast/itn', express.urlencoded({ extended: true }), (req, res) 
 
   tx.status = status;
   tx.payfastPayload = body;
-  if (status === 'COMPLETE') tx.paidAt = new Date().toISOString();
+  if (status === 'COMPLETE') {
+    tx.paidAt = new Date().toISOString();
+    const user = db.users.find((u) => u.id === tx.userId);
+    if (user && tx.plan) {
+      user.subscriptionPlan = tx.plan;
+      user.updatedAt = new Date().toISOString();
+    }
+  }
   tx.updatedAt = new Date().toISOString();
   logAuditEvent(db, 'payment.itn_processed', { txId: tx.id, status, amount: receivedAmount });
   writeDB(db);
@@ -659,7 +793,7 @@ app.get('/api/admin/subscribers', authMiddleware, requireRole('admin'), (_req, r
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`FaithHaven backend running on :${PORT}`);
+    log.info('FaithHaven backend started', { port: PORT });
   });
 }
 

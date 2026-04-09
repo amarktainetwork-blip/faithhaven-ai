@@ -8,7 +8,6 @@ const navLinks = [
   { key: 'nav.features' as const, href: '/#features' },
   { key: 'nav.pricing' as const, href: '/#pricing' },
   { key: 'nav.about' as const, href: '/about' },
-  { key: 'nav.blog' as const, href: '/blog' },
   { key: 'nav.contact' as const, href: '/contact' },
 ];
 

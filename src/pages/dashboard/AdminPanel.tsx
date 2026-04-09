@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useAdminStore } from '@/store';
 
 export default function AdminPanel() {
-  const { stats, subscribers, apiConfig, isLoading, fetchStats, fetchSubscribers } = useAdminStore();
+  const { stats, subscribers, isLoading, fetchStats, fetchSubscribers } = useAdminStore();
 
   useEffect(() => {
     fetchStats();
@@ -45,8 +45,8 @@ export default function AdminPanel() {
       <div className="grid lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl border border-[hsl(48,30%,88%)] p-6">
           <h2 className="text-xl font-bold text-slate-800 mb-4">Billing Integration</h2>
-          <p className="text-slate-600 mb-4">Provider: <strong>{apiConfig.provider}</strong></p>
-          <p className="text-slate-600 mb-4">Mode: <strong>{apiConfig.environment}</strong></p>
+          <p className="text-slate-600 mb-4">Provider: <strong>PayFast</strong></p>
+          <p className="text-slate-600 mb-4">Mode: <strong>{import.meta.env.PROD ? 'live' : 'sandbox'}</strong></p>
           <p className="text-slate-500 text-sm">Secret API keys are intentionally not stored in client state. Configure them only on the backend/VPS environment.</p>
         </div>
 

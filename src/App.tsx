@@ -2,15 +2,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore, useUIStore } from '@/store';
+import { I18nProvider } from '@/i18n/I18nProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const LandingPage = lazy(() => import('@/pages/landing/LandingPage'));
 const AboutPage = lazy(() => import('@/pages/landing/AboutPage'));
 const ContactPage = lazy(() => import('@/pages/landing/ContactPage'));
-const CareersPage = lazy(() => import('@/pages/landing/CareersPage'));
-const PressPage = lazy(() => import('@/pages/landing/PressPage'));
-const BlogPage = lazy(() => import('@/pages/landing/BlogPage'));
-const BlogPostPage = lazy(() => import('@/pages/landing/BlogPostPage'));
 const HelpCenterPage = lazy(() => import('@/pages/landing/HelpCenterPage'));
 const CommunityPage = lazy(() => import('@/pages/landing/CommunityPage'));
 const GuidelinesPage = lazy(() => import('@/pages/landing/GuidelinesPage'));
@@ -59,50 +56,48 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <Toaster position="top-right" richColors />
-        <Suspense fallback={<div className="min-h-screen grid place-items-center">Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/careers" element={<CareersPage />} />
-            <Route path="/press" element={<PressPage />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/blog/:id" element={<BlogPostPage />} />
-            <Route path="/help" element={<HelpCenterPage />} />
-            <Route path="/community" element={<CommunityPage />} />
-            <Route path="/guidelines" element={<GuidelinesPage />} />
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms" element={<TermsOfServicePage />} />
-            <Route path="/cookies" element={<CookiePolicyPage />} />
-            <Route path="/gdpr" element={<GDPRPage />} />
+      <I18nProvider>
+        <Router>
+          <Toaster position="top-right" richColors />
+          <Suspense fallback={<div className="min-h-screen grid place-items-center">Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/help" element={<HelpCenterPage />} />
+              <Route path="/community" element={<CommunityPage />} />
+              <Route path="/guidelines" element={<GuidelinesPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsOfServicePage />} />
+              <Route path="/cookies" element={<CookiePolicyPage />} />
+              <Route path="/gdpr" element={<GDPRPage />} />
 
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<AIChat />} />
-              <Route path="chat" element={<AIChat />} />
-              <Route path="prayer-journal" element={<PrayerJournal />} />
-              <Route path="devotional" element={<DailyDevotional />} />
-              <Route path="calendar" element={<Calendar />} />
-              <Route path="sermon-creator" element={<SermonCreator />} />
-              <Route path="liturgy" element={<LiturgyBuilder />} />
-              <Route path="youth-hub" element={<YouthHub />} />
-              <Route path="little-lambs" element={<LittleLambs />} />
-              <Route path="bible-audio" element={<BibleAudio />} />
-              <Route path="family-devotionals" element={<FamilyDevotionals />} />
-              <Route path="worship-music" element={<WorshipMusic />} />
-              <Route path="prayer-wall" element={<PrayerWall />} />
-              <Route path="admin" element={<AdminPanel />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
-      </Router>
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route index element={<AIChat />} />
+                <Route path="chat" element={<AIChat />} />
+                <Route path="prayer-journal" element={<PrayerJournal />} />
+                <Route path="devotional" element={<DailyDevotional />} />
+                <Route path="calendar" element={<Calendar />} />
+                <Route path="sermon-creator" element={<SermonCreator />} />
+                <Route path="liturgy" element={<LiturgyBuilder />} />
+                <Route path="youth-hub" element={<YouthHub />} />
+                <Route path="little-lambs" element={<LittleLambs />} />
+                <Route path="bible-audio" element={<BibleAudio />} />
+                <Route path="family-devotionals" element={<FamilyDevotionals />} />
+                <Route path="worship-music" element={<WorshipMusic />} />
+                <Route path="prayer-wall" element={<PrayerWall />} />
+                <Route path="admin" element={<AdminPanel />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </Router>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }

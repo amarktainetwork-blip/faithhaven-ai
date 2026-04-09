@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Sparkles, Zap, Users, Building2 } from 'lucide-react';
-import { usePricingStore } from '@/store';
+import { Check, X, Sparkles, Zap, Users } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nProvider';
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free',
-    description: 'Perfect for getting started',
+    id: 'free' as const,
+    icon: Sparkles,
     monthlyPrice: 0,
     yearlyPrice: 0,
-    icon: Sparkles,
     features: [
       'AI Faith Mentor (limited)',
       'Basic prayer journal',
@@ -26,13 +24,11 @@ const plans = [
     ],
   },
   {
-    id: 'individual',
-    name: 'Individual',
-    description: 'For personal spiritual growth',
-    monthlyPrice: 99,
-    yearlyPrice: 999,
+    id: 'individual' as const,
     icon: Zap,
     popular: true,
+    monthlyPrice: 19,
+    yearlyPrice: 190,
     features: [
       'Unlimited AI Faith Mentor',
       'Advanced prayer journal',
@@ -43,48 +39,24 @@ const plans = [
       'Priority email support',
     ],
     notIncluded: [
-      'Family accounts',
+      'Family accounts (up to 4)',
       'Youth hub access',
       'Little Lambs content',
     ],
   },
   {
-    id: 'family',
-    name: 'Family',
-    description: 'For households and families',
-    monthlyPrice: 199,
-    yearlyPrice: 1999,
+    id: 'family' as const,
     icon: Users,
+    monthlyPrice: 39,
+    yearlyPrice: 390,
     features: [
       'Everything in Individual',
-      'Up to 6 family accounts',
+      'Up to 4 family accounts',
       'Little Lambs (ages 3-12)',
       'Youth Hub (ages 13-18)',
       'Family devotionals',
       'Parental controls',
       'Priority chat support',
-    ],
-    notIncluded: [
-      'Congregation management',
-      'Bulk user management',
-    ],
-  },
-  {
-    id: 'congregation',
-    name: 'Congregation',
-    description: 'For churches and ministries',
-    monthlyPrice: 499,
-    yearlyPrice: 4999,
-    icon: Building2,
-    features: [
-      'Everything in Family',
-      'Unlimited congregants',
-      'Church management tools',
-      'Event planning',
-      'Group messaging',
-      'Custom branding',
-      'Dedicated support',
-      'API access',
     ],
     notIncluded: [],
   },
@@ -92,13 +64,7 @@ const plans = [
 
 export default function PricingSection() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
-  const { getCurrencySymbol, convertPrice } = usePricingStore();
-
-  const formatPrice = (zarPrice: number) => {
-    const converted = convertPrice(zarPrice);
-    const symbol = getCurrencySymbol();
-    return `${symbol}${converted}`;
-  };
+  const { t } = useI18n();
 
   return (
     <section id="pricing" className="py-20 lg:py-32 px-4 sm:px-6 lg:px-8 bg-white">
@@ -107,14 +73,13 @@ export default function PricingSection() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[hsl(210,80%,95%)] text-[hsl(210,70%,50%)] text-sm font-medium mb-6">
             <Sparkles className="w-4 h-4" />
-            Pricing
+            {t('pricing.title')}
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-800 mb-6">
-            Choose Your{' '}
-            <span className="text-gradient">Plan</span>
+            {t('pricing.title')}
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-8">
-            Start free and upgrade as you grow. All plans include core features to support your faith journey.
+            {t('pricing.subtitle')}
           </p>
 
           {/* Billing Toggle */}
@@ -127,7 +92,7 @@ export default function PricingSection() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Monthly
+              {t('pricing.billingMonthly')}
             </button>
             <button
               onClick={() => setBillingPeriod('yearly')}
@@ -137,16 +102,16 @@ export default function PricingSection() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Yearly
+              {t('pricing.billingYearly')}
               <span className="px-2 py-0.5 bg-[hsl(150,30%,55%)]/20 text-[hsl(150,30%,45%)] text-xs rounded-full">
-                Save 15%
+                {t('pricing.saveBadge')}
               </span>
             </button>
           </div>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -168,20 +133,25 @@ export default function PricingSection() {
                 <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${
                   plan.id === 'free' ? 'from-[hsl(48,90%,65%)] to-[hsl(35,80%,60%)]' :
                   plan.id === 'individual' ? 'from-[hsl(210,70%,60%)] to-[hsl(260,50%,65%)]' :
-                  plan.id === 'family' ? 'from-[hsl(150,30%,55%)] to-[hsl(180,40%,50%)]' :
-                  'from-[hsl(260,50%,65%)] to-[hsl(300,40%,60%)]'
+                  'from-[hsl(150,30%,55%)] to-[hsl(180,40%,50%)]'
                 } flex items-center justify-center mx-auto mb-4`}>
                   <plan.icon className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{plan.name}</h3>
-                <p className="text-slate-500 text-sm">{plan.description}</p>
+                <h3 className="text-xl font-bold text-slate-800 mb-1">
+                  {t(`pricing.${plan.id}.name` as Parameters<typeof t>[0])}
+                </h3>
+                <p className="text-slate-500 text-sm">
+                  {t(`pricing.${plan.id}.desc` as Parameters<typeof t>[0])}
+                </p>
               </div>
 
               <div className="text-center mb-6">
                 <span className="text-4xl font-bold text-slate-800">
-                  {formatPrice(billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice)}
+                  R{billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
                 </span>
-                <span className="text-slate-500">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                <span className="text-slate-500">
+                  /{billingPeriod === 'monthly' ? t('pricing.perMonth') : t('pricing.perYear')}
+                </span>
               </div>
 
               <Link
@@ -192,11 +162,11 @@ export default function PricingSection() {
                     : 'bg-white border-2 border-[hsl(48,30%,88%)] text-slate-700 hover:border-[hsl(210,70%,60%)] hover:text-[hsl(210,70%,50%)]'
                 }`}
               >
-                {plan.id === 'free' ? 'Get Started Free' : 'Start Free Trial'}
+                {t(`pricing.${plan.id}.cta` as Parameters<typeof t>[0])}
               </Link>
 
               <div className="space-y-3">
-                <p className="text-sm font-medium text-slate-700">Included:</p>
+                <p className="text-sm font-medium text-slate-700">{t('pricing.featureIncluded')}</p>
                 {plan.features.map((feature) => (
                   <div key={feature} className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-[hsl(150,30%,55%)] flex-shrink-0 mt-0.5" />
@@ -205,7 +175,7 @@ export default function PricingSection() {
                 ))}
                 {plan.notIncluded.length > 0 && (
                   <>
-                    <p className="text-sm font-medium text-slate-700 pt-4">Not included:</p>
+                    <p className="text-sm font-medium text-slate-700 pt-4">{t('pricing.featureNotIncluded')}</p>
                     {plan.notIncluded.map((feature) => (
                       <div key={feature} className="flex items-start gap-3">
                         <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />
@@ -221,9 +191,7 @@ export default function PricingSection() {
 
         {/* Trust Note */}
         <div className="mt-12 text-center">
-          <p className="text-slate-500">
-            All plans start with a 14-day free trial. No credit card required.
-          </p>
+          <p className="text-slate-500">{t('pricing.trialNote')}</p>
         </div>
       </div>
     </section>
