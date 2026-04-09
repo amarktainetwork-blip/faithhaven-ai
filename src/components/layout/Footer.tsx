@@ -7,16 +7,12 @@ const footerLinks = {
     { label: 'Features', href: '/#features' },
     { label: 'Pricing', href: '/#pricing' },
     { label: 'Testimonials', href: '/#testimonials' },
-    { label: 'FAQ', href: '/help' },
   ],
   company: [
     { label: 'About Us', href: '/about' },
     { label: 'Contact', href: '/contact' },
-    { label: 'Careers', href: '/careers' },
-    { label: 'Press', href: '/press' },
   ],
   resources: [
-    { label: 'Blog', href: '/blog' },
     { label: 'Help Center', href: '/help' },
     { label: 'Community', href: '/community' },
     { label: 'Guidelines', href: '/guidelines' },
@@ -49,15 +45,9 @@ export default function Footer() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(210,70%,60%)] to-[hsl(260,50%,65%)] flex items-center justify-center">
                 <Cross className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">
-                FaithHaven
-              </span>
+              <span className="text-xl font-bold text-white">FaithHaven</span>
             </Link>
-            <p className="text-slate-400 mb-6 max-w-sm">
-              {t('footer.tagline')}
-            </p>
-            
-            {/* Contact Info */}
+            <p className="text-slate-400 mb-6 max-w-sm">{t('footer.tagline')}</p>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="w-4 h-4 text-[hsl(210,70%,60%)]" />
@@ -74,18 +64,13 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Links Columns */}
+          {/* Links */}
           <div>
             <h4 className="text-white font-semibold mb-4">{t('footer.product')}</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  <Link to={link.href} className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors">{link.label}</Link>
                 </li>
               ))}
             </ul>
@@ -96,12 +81,7 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  <Link to={link.href} className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors">{link.label}</Link>
                 </li>
               ))}
             </ul>
@@ -112,12 +92,7 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  <Link to={link.href} className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors">{link.label}</Link>
                 </li>
               ))}
             </ul>
@@ -128,12 +103,7 @@ export default function Footer() {
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors"
-                  >
-                    {link.label}
-                  </Link>
+                  <Link to={link.href} className="text-sm hover:text-[hsl(210,70%,60%)] transition-colors">{link.label}</Link>
                 </li>
               ))}
             </ul>
@@ -145,12 +115,7 @@ export default function Footer() {
           <h4 className="text-white font-semibold mb-4">{t('footer.supportedDenominations')}</h4>
           <div className="flex flex-wrap gap-2">
             {denominations.map((denom) => (
-              <span
-                key={denom}
-                className="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400"
-              >
-                {denom}
-              </span>
+              <span key={denom} className="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">{denom}</span>
             ))}
           </div>
         </div>
@@ -161,17 +126,12 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-slate-500 text-center md:text-left">
-              © 2026 FaithHaven AI – Made with{' '}
+              {t('footer.copyright')} &mdash; Made with{' '}
               <Heart className="w-4 h-4 inline text-[hsl(340,60%,65%)] fill-[hsl(340,60%,65%)]" />{' '}
-              by Amarktai Network | Part of the{' '}
-              <a href="#" className="text-[hsl(210,70%,60%)] hover:underline">
-                Amarktai Network
-              </a>
+              by Amarktai Network
             </div>
             <div className="flex items-center gap-6">
-              <span className="text-xs text-slate-600">
-                {t('footer.availableIn')}
-              </span>
+              <span className="text-xs text-slate-600">{t('footer.availableIn')}</span>
             </div>
           </div>
         </div>

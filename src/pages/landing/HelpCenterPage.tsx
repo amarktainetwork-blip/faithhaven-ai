@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HelpCircle, Search, ChevronDown, ChevronUp, MessageCircle, BookOpen, Video, Mail } from 'lucide-react';
-import { useFAQStore } from '@/store';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
@@ -11,13 +10,19 @@ const helpCategories = [
   { icon: Video, title: 'Tutorials', description: 'Video guides for all features' },
 ];
 
+const faqItems = [
+  { id: '1', question: 'Is FaithHaven AI free?', answer: 'Yes, we have a free tier. Paid plans start at R19/month for individuals.', category: 'Getting Started' },
+  { id: '2', question: 'How do I cancel my subscription?', answer: 'Go to Settings → Security and manage your subscription from there.', category: 'Account & Billing' },
+  { id: '3', question: 'Which denominations are supported?', answer: 'We support Catholic, Orthodox, Anglican, Lutheran, Methodist, Presbyterian, Baptist, Pentecostal, Charismatic, Reformed, and Non-denominational traditions.', category: 'Getting Started' },
+  { id: '4', question: 'Is my data private?', answer: 'Yes, your prayer journals and conversations are private and encrypted.', category: 'Account & Billing' },
+];
+
 export default function HelpCenterPage() {
-  const { items } = useFAQStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const filteredFAQs = items.filter(faq => {
+  const filteredFAQs = faqItems.filter(faq => {
     const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !selectedCategory || faq.category === selectedCategory;

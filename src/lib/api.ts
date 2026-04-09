@@ -3,18 +3,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 export const getApiBaseUrl = () => API_BASE_URL;
 
 export const apiRequest = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const token = localStorage.getItem('faithhaven-token');
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> ?? {}),
   };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
